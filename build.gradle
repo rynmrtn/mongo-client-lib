@@ -1,0 +1,78 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'maven-publish'
+
+repositories {
+	mavenCentral()
+}
+
+configurations {
+    intTest.extendsFrom testRuntime
+}
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '1.9'
+}
+
+repositories {
+    mavenCentral()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId 'io.rynmrtn.mongo'
+            artifactId 'MongoClientLib'
+            version '1.0.0'
+
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url 'local-publish'
+//            credentials {
+//                username "${mavenUser}"
+//                password "${mavenPassword}"
+//            }
+        }
+    }
+}
+
+sourceSets {
+    intTest {
+        java.srcDir file('src/inttest/java')
+        resources.srcDir file('src/inttest/resources')
+        compileClasspath = sourceSets.main.output + sourceSets.test.output + configurations.intTest
+        runtimeClasspath = output + compileClasspath
+    }
+}
+
+task intTest(type: Test, dependsOn: jar) {
+
+    systemProperties = System.properties
+    testClassesDir = sourceSets.intTest.output.classesDir
+    reports.html.destination = file(buildDir.absolutePath + '/inttest-reports')
+    reports.html.destination = file(buildDir.absolutePath + '/inttest-results')
+
+    classpath = sourceSets.intTest.runtimeClasspath
+    jvmArgs '-Xms512m','-Xmx2048m','-XX:MaxPermSize=128m','-XX:+CMSClassUnloadingEnabled','-XX:+OptimizeStringConcat','-XX:+UseCompressedStrings','-XX:+UseConcMarkSweepGC'
+
+    def i = 1;
+    afterTest { descr, result ->
+        logger.lifecycle("#$i $descr.className $descr.name completed");
+        i++;
+    }
+}
+
+dependencies {
+	compile 'org.mongodb:mongo-java-driver:2.11.4'
+    compile "org.aeonbits.owner:owner:1.0.5"
+
+    compile "org.slf4j:slf4j-api:1.6.1"
+    compile "org.slf4j:slf4j-log4j12:1.6.1"
+
+    testCompile 'junit:junit:4.11'
+}
